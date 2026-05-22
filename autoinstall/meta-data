@@ -1,0 +1,2 @@
+instance-id: k8s-node
+local-hostname: k8s-node

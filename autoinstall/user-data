@@ -1,0 +1,42 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+    variant: ''
+  timezone: UTC
+  network:
+    version: 2
+    ethernets:
+      any:
+        match:
+          name: "en*"
+        dhcp4: true
+  storage:
+    layout:
+      name: lvm
+    match:
+      size: largest
+  identity:
+    hostname: k8s-node
+    username: k8s-admin
+    password: "$6$KpUJQ2rjbkgSRvN.$dUYLQ8UWws3YCAZ6APJlI6gwx8XqBzUwy8MadiBNjUSRLEjjNQw1ygTJzdtd9kbgOUX2zi0TrfCBEBRbfTJxa1"
+    realname: K8s Admin
+  ssh:
+    install-server: true
+    allow-pw: true
+  packages:
+    - curl
+    - wget
+    - git
+    - vim
+    - net-tools
+    - openssh-server
+  late-commands:
+    - echo 'k8s-admin ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/k8s-admin
+    - swapoff -a
+    - sed -i '/ swap / s/^(.*)$/#\1/g' /target/etc/fstab
+    - rm -f /target/swap.img
+    - curtin in-target --target=/target -- systemctl enable ssh
+  shutdown: reboot
