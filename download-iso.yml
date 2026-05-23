@@ -1,0 +1,34 @@
+---
+- name: download latest ubuntu lts server iso
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ubuntu_release: noble
+    download_dir: "{{ lookup('env', 'HOME') }}/Downloads"
+
+  tasks:
+    - name: get sha256sums to find latest iso filename
+      uri:
+        url: "https://releases.ubuntu.com/{{ ubuntu_release }}/SHA256SUMS"
+        return_content: yes
+      register: sha256sums
+
+    - name: extract latest server iso filename
+      set_fact:
+        iso_filename: "{{ sha256sums.content | regex_findall('ubuntu-[0-9]+\\.[0-9]+\\.[0-9]+-live-server-amd64\\.iso') | last }}"
+
+    - name: show iso being downloaded
+      debug:
+        msg: "Downloading {{ iso_filename }} from releases.ubuntu.com"
+
+    - name: download ubuntu server iso
+      get_url:
+        url: "https://releases.ubuntu.com/{{ ubuntu_release }}/{{ iso_filename }}"
+        dest: "{{ download_dir }}/{{ iso_filename }}"
+        checksum: "sha256:{{ sha256sums.content | regex_search('([a-f0-9]{64}) \\*' + iso_filename, '\\1') | first }}"
+      register: download_result
+
+    - name: download complete
+      debug:
+        msg: "Download complete: {{ download_dir }}/{{ iso_filename }} — flash to USB with Balena Etcher then copy autoinstall/user-data and autoinstall/meta-data to the USB boot partition"

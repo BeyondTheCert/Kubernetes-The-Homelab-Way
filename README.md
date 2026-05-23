@@ -14,6 +14,34 @@ This repo is a letter to who I was a year ago. It's for anyone new to Kubernetes
 
 ---
 
+## Before You Begin — Get the Ubuntu ISO
+
+Before running the Ansible playbooks each node needs Ubuntu 24.04 Server installed. This playbook downloads the latest Ubuntu LTS Server ISO automatically — no manual version checking needed.
+
+### Download the latest Ubuntu ISO
+
+```bash
+ansible-playbook download-iso.yml
+```
+
+This hits the Ubuntu releases page, finds the latest 24.04 LTS Server ISO, verifies the SHA256 checksum, and downloads it to your ~/Downloads folder.
+
+### Flash to USB
+Download Balena Etcher: https://etcher.balena.io
+Flash the ISO to a USB drive.
+
+### Add autoinstall config to USB
+Copy both files from the autoinstall/ directory to the root of the USB boot partition:
+- autoinstall/user-data
+- autoinstall/meta-data
+
+### Boot each node from USB
+Enter BIOS/UEFI (F2, F12, or Del). Set USB as first boot device. Select your disk when prompted. Walk away — Ubuntu installs itself and reboots when done.
+
+Then proceed with the Ansible playbooks.
+
+---
+
 ## Who This Is For
 
 - Anyone new to Kubernetes who wants hands-on experience beyond tutorials
