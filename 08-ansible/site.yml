@@ -1,0 +1,22 @@
+
+---
+- name: preps machine for os install
+  ansible.builtin.import_playbook: playbooks/01-os-prep.yml
+
+- name: install containerd
+  ansible.builtin.import_playbook: playbooks/02-containerd.yml
+
+- name: install kubeadm
+  ansible.builtin.import_playbook: playbooks/03-kubeadm-tools.yml
+
+- name: initialize control plane components
+  ansible.builtin.import_playbook: playbooks/04-cluster-init.yml
+
+- name: join worker nodes to cluster
+  ansible.builtin.import_playbook: playbooks/05-join-nodes.yml
+
+- name: install cluster main components
+  ansible.builtin.import_playbook: playbooks/06-stack.yml
+
+- name: install observability components in cluster
+  ansible.builtin.import_playbook: playbooks/07-observability.yml

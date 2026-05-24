@@ -1,0 +1,97 @@
+---
+- name: install main components in cluster
+  hosts: masters
+  become: true
+  tasks:
+    - name: download helm install script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: '0755'
+        force: false
+    - name: install helm
+      command:
+        cmd: /tmp/get-helm-3.sh
+      args:
+        creates: /usr/local/bin/helm
+    - name: Add metallb chart repo
+      kubernetes.core.helm_repository:
+        name: metallb
+        repo_url: "https://metallb.github.io/metallb"
+    - name: Deploy latest version of Metallb chart inside metallb namespace (and create it)
+      kubernetes.core.helm:
+        name: metallb
+        chart_ref: metallb/metallb
+        release_namespace: metallb
+        kubeconfig: /etc/kubernetes/admin.conf
+        create_namespace: true
+        values:
+          frr-k8s:
+            prometheus:
+              serviceMonitor:
+                enabled: false
+    - name: check if tailscale is installed
+      stat:
+        path: /usr/bin/tailscale
+      register: tailscale_check
+    - name: pause for calico to restart after BGP fix
+      pause:
+        seconds: 30
+      when: tailscale_check.stat.exists
+    - name: wait for calico to be ready
+      command:
+        cmd: kubectl wait --for=condition=Ready pods -l k8s-app=calico-node -n kube-system --timeout=300s
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+    - name: Add nginx chart repo
+      kubernetes.core.helm_repository:
+        name: nginx
+        repo_url: "https://kubernetes.github.io/ingress-nginx"
+    - name: Deploy latest version of NGINX chart inside nginx namespace (and create it)
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: nginx/ingress-nginx
+        release_namespace: nginx
+        kubeconfig: /etc/kubernetes/admin.conf
+        create_namespace: true
+    - name: Add cert-manager chart repo
+      kubernetes.core.helm_repository:
+        name: cert-manager
+        repo_url: "https://charts.jetstack.io"
+    - name: Deploy latest version of cert-manager chart inside cert-manager namespace (and create it)
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: cert-manager/cert-manager
+        release_namespace: cert-manager
+        kubeconfig: /etc/kubernetes/admin.conf
+        create_namespace: true
+        set_values:
+          - value: installCRDs=true
+    - name: Add sealed-secrets chart repo
+      kubernetes.core.helm_repository:
+        name: sealed-secrets
+        repo_url: "https://bitnami-labs.github.io/sealed-secrets"
+    - name: Deploy latest version of sealed-secrets chart inside sealed-secrets namespace (and create it)
+      kubernetes.core.helm:
+        name: sealed-secrets
+        chart_ref: sealed-secrets/sealed-secrets
+        release_namespace: sealed-secrets
+        kubeconfig: /etc/kubernetes/admin.conf
+        create_namespace: true
+    - name: fix calico bgp conflict
+      command:
+        cmd: kubectl set env daemonset/calico-node -n kube-system IP_AUTODETECTION_METHOD=skip-interface=tailscale.*
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      when: tailscale_check.stat.exists
+    - name: Add argocd chart repo
+      kubernetes.core.helm_repository:
+        name: argocd
+        repo_url: "https://argoproj.github.io/argo-helm"
+    - name: Deploy latest version of argocd chart inside argocd namespace (and create it)
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argocd/argo-cd
+        release_namespace: argocd
+        kubeconfig: /etc/kubernetes/admin.conf
+        create_namespace: true

@@ -1,0 +1,94 @@
+---
+- name: Restore etcd from NAS snapshot
+  hosts: masters
+  become: true
+  vars:
+    etcd_snapshot: "etcd-snapshot-20260523-020009.db"  # change to desired snapshot
+    nfs_server: "192.168.1.69"
+    nfs_path: "/volume1/backups"
+    restore_dir: "/var/lib/etcd-restore"
+    etcd_data_dir: "/var/lib/etcd"
+    etcd_certs_dir: "/etc/kubernetes/pki/etcd"
+
+  tasks:
+    - name: Install nfs-common
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Create temp mount point
+      file:
+        path: /mnt/etcd-backup
+        state: directory
+
+    - name: Mount NAS backup share
+      command:
+        cmd: mount -t nfs {{ nfs_server }}:{{ nfs_path }} /mnt/etcd-backup
+
+    - name: Verify snapshot exists
+      stat:
+        path: /mnt/etcd-backup/{{ etcd_snapshot }}
+      register: snapshot_file
+
+    - name: Fail if snapshot not found
+      fail:
+        msg: "Snapshot {{ etcd_snapshot }} not found on NAS"
+      when: not snapshot_file.stat.exists
+
+    - name: Stop etcd on all control plane nodes
+      command:
+        cmd: crictl stop $(crictl ps -q --name etcd)
+      ignore_errors: true
+
+    - name: Wait for etcd to stop
+      pause:
+        seconds: 10
+
+    - name: Back up existing etcd data
+      command:
+        cmd: mv {{ etcd_data_dir }} {{ etcd_data_dir }}.bak.{{ ansible_date_time.date }}
+      ignore_errors: true
+
+    - name: Create restore directory
+      file:
+        path: "{{ restore_dir }}"
+        state: directory
+
+    - name: Restore etcd snapshot
+      command:
+        cmd: >
+          etcdctl snapshot restore /mnt/etcd-backup/{{ etcd_snapshot }}
+          --data-dir={{ restore_dir }}
+          --cacert={{ etcd_certs_dir }}/ca.crt
+          --cert={{ etcd_certs_dir }}/server.crt
+          --key={{ etcd_certs_dir }}/server.key
+      environment:
+        ETCDCTL_API: "3"
+
+    - name: Move restored data to etcd data dir
+      command:
+        cmd: mv {{ restore_dir }} {{ etcd_data_dir }}
+
+    - name: Restart kubelet to bring etcd back up
+      systemd:
+        name: kubelet
+        state: restarted
+
+    - name: Wait for etcd to come back up
+      pause:
+        seconds: 30
+
+    - name: Unmount NAS backup share
+      command:
+        cmd: umount /mnt/etcd-backup
+
+    - name: Verify cluster is healthy
+      command:
+        cmd: kubectl get nodes
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: cluster_status
+
+    - name: Show cluster status
+      debug:
+        msg: "{{ cluster_status.stdout }}"

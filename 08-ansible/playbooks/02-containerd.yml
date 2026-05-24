@@ -1,0 +1,26 @@
+---
+- name: install containerd in all machines
+  hosts: all
+  become: true
+  tasks:
+    - name: install containerd
+      apt:
+        name: containerd
+        state: present
+    - name: create containerd config directory
+      file:
+        path: /etc/containerd
+        state: directory
+    - name: generate default containerd config
+      shell:
+        cmd: containerd config default | tee /etc/containerd/config.toml
+      args:
+        creates: /etc/containerd/config.toml
+    - name: fix SystemdCgroup setting
+      command:
+        cmd: sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+    - name: restart and enable containerd
+      systemd:
+        name: containerd
+        state: restarted
+        enabled: yes

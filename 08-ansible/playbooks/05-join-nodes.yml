@@ -1,0 +1,17 @@
+---
+- name: read join command from master
+  hosts: masters
+  become: true
+  tasks:
+    - name: read join command
+      slurp:
+        src: /tmp/join_command.sh
+      register: join_command
+
+- name: join worker nodes to cluster
+  hosts: workers
+  become: true
+  tasks:
+    - name: join worker nodes
+      command:
+        cmd: "{{ hostvars[groups['masters'][0]]['join_command']['content'] | b64decode }}"

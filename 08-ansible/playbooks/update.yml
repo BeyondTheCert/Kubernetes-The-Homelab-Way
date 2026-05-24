@@ -1,0 +1,9 @@
+---
+- name: Update all packages on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        upgrade: yes
+        update_cache: yes

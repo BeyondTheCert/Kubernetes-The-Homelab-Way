@@ -1,0 +1,63 @@
+---
+- name: install kubeadm tools on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: get latest stable kubernetes version
+      uri:
+        url: https://dl.k8s.io/release/stable.txt
+        return_content: yes
+      register: k8s_version
+      delegate_to: localhost
+      run_once: true
+
+    - name: set kubernetes minor version fact
+      set_fact:
+        k8s_minor: "{{ k8s_version.content | trim | regex_replace('^(v[0-9]+\\.[0-9]+).*$', '\\1') }}"
+      run_once: true
+
+    - name: show kubernetes version being installed
+      debug:
+        msg: "Installing Kubernetes {{ k8s_version.content | trim }} (repo: {{ k8s_minor }})"
+      run_once: true
+
+    - name: create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: download and dearmor k8s GPG key
+      shell:
+        cmd: "curl -fsSL https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: add k8s apt repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ k8s_minor }}/deb/ /"
+        state: present
+
+    - name: install kubeadm kubelet kubectl
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: yes
+
+    - name: hold kubelet
+      dpkg_selections:
+        name: kubelet
+        selection: hold
+
+    - name: hold kubeadm
+      dpkg_selections:
+        name: kubeadm
+        selection: hold
+
+    - name: hold kubectl
+      dpkg_selections:
+        name: kubectl
+        selection: hold

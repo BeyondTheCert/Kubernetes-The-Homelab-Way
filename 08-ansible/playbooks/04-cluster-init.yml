@@ -1,0 +1,41 @@
+---
+- name: initialize control plane components
+  hosts: masters
+  become: true
+  tasks:
+    - name: run kubeadm init
+      command:
+        cmd: kubeadm init --control-plane-endpoint {{ ansible_host }}
+      register: kubeadm_output
+    - name: create .kube directory
+      file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        mode: '0755'
+    - name: copy admin.conf
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ ansible_user }}/.kube/config
+        remote_src: yes
+        owner: "{{ ansible_user }}"
+        mode: '0644'
+    - name: install calico CNI
+      command:
+        cmd: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.0/manifests/calico.yaml
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+    - name: check if tailscale is installed
+      stat:
+        path: /usr/bin/tailscale
+      register: tailscale_check
+    - name: apply calico BGP fix for tailscale
+      command:
+        cmd: kubectl set env daemonset/calico-node -n kube-system IP_AUTODETECTION_METHOD=skip-interface=tailscale.*
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      when: tailscale_check.stat.exists
+    - name: save join command to file
+      copy:
+        content: "{{ kubeadm_output.stdout_lines[-2:] | join(' ') | regex_replace('\\\\\\s+', ' ') }}"
+        dest: /tmp/join_command.sh

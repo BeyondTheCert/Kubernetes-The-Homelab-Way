@@ -1,0 +1,66 @@
+---
+- name: prep machine for k8s install
+  hosts: all
+  become: true
+  tasks:
+    - name: disable swap
+      command:
+        cmd: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: comment out swap entry
+      command:
+        cmd: sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+      when: ansible_swaptotal_mb > 0
+
+    - name: remove swap file permanently
+      file:
+        path: /swap.img
+        state: absent
+
+    - name: install nfs-common
+      apt:
+        name: nfs-common
+        state: present
+        update_cache: yes
+
+    - name: load overlay kernel module
+      modprobe:
+        name: overlay
+        state: present
+
+    - name: load br_netfilter kernel module
+      modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: persist kernel modules on boot
+      copy:
+        content: |
+          overlay
+          br_netfilter
+        dest: /etc/modules-load.d/k8s.conf
+
+    - name: set ipv4 forwarding
+      sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes
+
+    - name: set net.bridge.bridge-nf-call-iptables
+      sysctl:
+        name: net.bridge.bridge-nf-call-iptables
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes
+
+    - name: set net.bridge.bridge-nf-call-ip6tables
+      sysctl:
+        name: net.bridge.bridge-nf-call-ip6tables
+        value: '1'
+        sysctl_set: yes
+        state: present
+        reload: yes

@@ -1,0 +1,12 @@
+---
+- name: install tailscale on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: install tailscale
+      shell:
+        cmd: curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: start tailscale
+      command:
+        cmd: tailscale up
