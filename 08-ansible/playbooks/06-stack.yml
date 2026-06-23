@@ -70,7 +70,7 @@
     - name: Add sealed-secrets chart repo
       kubernetes.core.helm_repository:
         name: sealed-secrets
-        repo_url: "https://bitnami-labs.github.io/sealed-secrets"
+        repo_url: "repo_url: "https://bitnami.github.io/sealed-secrets""
     - name: Deploy latest version of sealed-secrets chart inside sealed-secrets namespace (and create it)
       kubernetes.core.helm:
         name: sealed-secrets
