@@ -85,7 +85,7 @@ Note the ansible_become_pass — required if using password auth, since most tas
 
 Run it
 
-bashansible-playbook -i inventory/hosts.yml site.yml
+bash ansible-playbook -i inventory/hosts.yml site.yml
 
 Known friction points
 
