@@ -1,4 +1,4 @@
-Readme · MDCopyKubernetes — The Homelab Way
+Readme · MDCopyKubernetes — The Homelab Way
 
 A companion repo to beyondthecert.dev
 
@@ -34,9 +34,15 @@ Encrypted secrets via Sealed Secrets
 Observability via Prometheus, Grafana, and Loki
 
 
-Tested Environments
+## Tested Environments
 
 This automation has been validated against:
+
+- **Bare metal** — Lenovo ThinkCentre, Dell laptops, and HP EliteDesk hardware
+- **[Local VMs](docs/local-vms.md)** — VirtualBox on a personal PC (NAT Network mode recommended over Bridged if using WiFi — some chipsets don't reliably bridge VM traffic)
+- **[Cloud (AWS EC2)](docs/aws-ec2.md)** — `t3.medium` or larger; MetalLB will not function as-is since it relies on L2/ARP behavior that doesn't exist in AWS's networking model — skip it with `when: false` on its two tasks in `06-stack.yml`, or wire up AWS's native LoadBalancer integration separately if you need one
+
+The core OS prep, containerd, kubeadm, and cluster bootstrap logic is the same across all three. Only networking-specific pieces (MetalLB, Bridged WiFi adapters) need environment-specific handling. See the linked walkthroughs above for full step-by-step instructions per environment.
 
 
 Bare metal — Lenovo ThinkCentre, Dell laptops, and HP EliteDesk hardware
@@ -103,24 +109,24 @@ How to Use This Repo
 
 1. Clone the repo
 
-bashgit clone https://github.com/BeyondTheCert/Kubernetes-The-Homelab-Way.git
+bash git clone https://github.com/BeyondTheCert/Kubernetes-The-Homelab-Way.git
 cd Kubernetes-The-Homelab-Way
 
 2. Set up your inventory
 
-bashcp inventory/hosts.yml.example inventory/hosts.yml
+bash cp inventory/hosts.yml.example inventory/hosts.yml
 
 Open hosts.yml and replace the placeholder IPs with the actual IPs of your nodes.
 
 3. Run the full stack
 
-bashansible-playbook site.yml -i inventory/hosts.yml
+bash ansible-playbook site.yml -i inventory/hosts.yml
 
 This runs all playbooks in order — OS prep, container runtime, kubeadm tools, cluster init, node join, stack install, and observability.
 
 Or run individual playbooks
 
-bashansible-playbook playbooks/01-os-prep.yml -i inventory/hosts.yml
+bash ansible-playbook playbooks/01-os-prep.yml -i inventory/hosts.yml
 
 Run playbooks individually if you want to step through the process or troubleshoot a specific stage.
 
