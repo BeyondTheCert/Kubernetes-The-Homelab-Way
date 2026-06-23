@@ -5,37 +5,31 @@
   tasks:
     - name: drain node
       command:
-        cmd: kubectl drain {{ target_node }} --ignore-daemonsets --delete-emptydir-data --force
+        cmd: kubectl drain {{ target_node_k8s_name }} --ignore-daemonsets --delete-emptydir-data --force
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
-
     - name: delete node from cluster
       command:
-        cmd: kubectl delete node {{ target_node }}
+        cmd: kubectl delete node {{ target_node_k8s_name }}
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
-
 - name: reset node
-  hosts: "{{ target_node }}"
+  hosts: "{{ target_node_inventory_host }}"
   become: true
   tasks:
     - name: run kubeadm reset
       command:
         cmd: kubeadm reset --force
-
     - name: remove cni config
       file:
         path: /etc/cni/net.d
         state: absent
-
     - name: flush iptables
       command:
         cmd: iptables -F
-
     - name: flush iptables nat
       command:
         cmd: iptables -t nat -F
-
     - name: remove kube config
       file:
         path: /root/.kube
