@@ -27,7 +27,7 @@ For each VM: Settings → Network → Adapter 1 → Attached to: NAT Network →
 
 Boot the VMs and confirm they got an IP:
 
-baship a
+bash ip a
 
 You should see an inet address in the 10.0.2.x range (VirtualBox's default NAT Network subnet) on the main interface (enp0s3 or similar).
 
@@ -41,7 +41,7 @@ NameProtocolHost PortGuest IPGuest Portssh-control-planeTCP2222<control plane's 
 
 Then SSH from your host:
 
-bashssh -p 2222 <username>@127.0.0.1
+bash ssh -p 2222 <username>@127.0.0.1
 ssh -p 2223 <username>@127.0.0.1
 
 Important distinction: those forwarded ports only work from your host machine. If you're running Ansible from inside one of the VMs (SSHed into the control plane, then running ansible-playbook from there targeting the worker), use the VMs' real internal NAT Network IPs (10.0.2.x) directly — not the forwarded ports, which only make sense from outside the NAT Network.
@@ -50,16 +50,16 @@ Setting up the control node
 
 If you're running Ansible from inside one of the VMs rather than your actual host machine, that VM needs Ansible installed — a fresh Ubuntu Server install doesn't have it:
 
-bashsudo apt update
+bash sudo apt update
 sudo apt install ansible-core -y
 
 If you're using password-based SSH auth between the VMs (rather than SSH keys), you also need sshpass:
 
-bashsudo apt install sshpass -y
+bash sudo apt install sshpass -y
 
 Inventory setup
 
-bashcp inventory/hosts.yml.example inventory/hosts.yml
+bash cp inventory/hosts.yml.example inventory/hosts.yml
 nano inventory/hosts.yml
 
 Example using password auth and internal NAT Network IPs:
